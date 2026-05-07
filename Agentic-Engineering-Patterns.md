@@ -49,3 +49,18 @@ Not every task deserves the same amount of deliberation. I try to gauge how much
 4. **Full brainstorm/spec/plan/implement cycle** — for the largest and most complex features. This means a serious engagement: one or two dozen back-and-forths about design decisions, a second review of those decisions before they make it into the spec, a spec review (which I usually skip), an implementation plan review (which I almost always skip), and a lengthy coding session. It can take anywhere from 30 minutes to half a day, with a ton of input from me and a long stretch of independent work from the agent. Costly, but worth it for features that are tricky and/or important to get right.
 
 Each point along the spectrum takes a different amount of effort on my part — both to make decisions and to babysit the agent — and is usually rewarded with commensurate effort and output from the agent. But not everything is worth the time, so choosing the right level of planning is itself a key skill.
+
+## Let the agent play around before writing code
+
+Via [Eric Jang](https://x.com/ericjang11/status/2042321708686983627):
+
+> These days, instead of directly asking LLMs to write code, I'm trying a new practice where I [let the] LLM execute the computations "manually", thinking through every step, instead of actually writing the program and then executing it.
+>
+> After the LLM is able to accomplish the task and has figured out the pitfalls along the way, I ask the LLM to generalize its execution traces into an actual program.
+>
+> Just as in humans, it makes sense to let the model gain some intuition for what task it is going to do before we try to "distill" the task into a rote procedure.
+
+Examples of where this works well:
+
+- Building a website scraper — let the agent scrape a site 'manually' first, then ask it to harden into a scraping script
+- Building against an unfamiliar API — give the agent a playground/sandbox and let it bang around with the API to learn all its nuances. Then ask it to build the feature that uses the new API
