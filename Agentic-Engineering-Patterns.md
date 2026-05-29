@@ -73,10 +73,4 @@ The result is a ratchet toward ever greater complexity. Each change piles new ha
 
 That's *your* job. You're the only one who can say "this behavior doesn't matter, stop accommodating it." You're the one who has to hold a vision for an architecture that actually makes sense and decide which bits of the present are worth carrying forward. The agent supplies the muscle; you supply the willingness to throw shit away.
 
-In practice this means saying the quiet part out loud, and being specific about what's expendable:
-
-- "Drop support for the old config format."
-- "Don't bother preserving that error message."
-- "Assume the input is always sorted."
-
-And if the agent keeps reaching for the bigger, more defensive design anyway, browbeat it. Tell it plainly that simpler-but-lossy is what you want. You may have to repeat yourself a few times before it lets go. Do it.
+... [when/how to do it...?]
