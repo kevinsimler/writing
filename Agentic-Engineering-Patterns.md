@@ -64,3 +64,13 @@ Examples of where this works well:
 
 - Building a website scraper — let the agent scrape a site 'manually' first, then ask it to harden into a scraping script
 - Building against an unfamiliar API — give the agent a playground/sandbox and let it bang around with the API to learn all its nuances. Then ask it to build the feature that uses the new API
+
+## Make the simplifying assumptions yourself
+
+AI agents tend to treat the current state of the code as gospel: every quirk, every edge case, every bit of existing behavior is presumed intentional and worth keeping. So when you ask for a change or a refactor, the agent bends over backwards to preserve all of it.
+
+The result is a ratchet toward ever greater complexity. Each change piles new handling on top of old, modules swell to absorb more cases, and the whole thing gets more tangled over time. Left to its own devices, the agent will rarely offer you the cleaner architecture, because "cleaner" generally means sacrificing at least some small detail of current behavior — and it won't make that trade on its own.
+
+That's *your* job. You're the only one who can say "this behavior doesn't matter, stop accommodating it." You're the one who has to hold a vision for an architecture that actually makes sense and decide which bits of the present are worth carrying forward. The agent supplies the muscle; you supply the willingness to throw shit away.
+
+... [when/how to do it...?]
