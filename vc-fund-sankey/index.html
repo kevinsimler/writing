@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>VC Fund Flows — Sankey Sketch</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root { color-scheme: light; }
+  body {
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #1f2328; background: #fafaf8; margin: 0; padding: 28px 36px 40px;
+  }
+  h1 { font-size: 21px; margin: 0 0 2px; }
+  .terms { color: #6a6f76; font-size: 13px; margin: 0 0 18px; }
+  .toggle { display: inline-flex; gap: 0; margin-bottom: 14px; border: 1px solid #d0d4da; border-radius: 8px; overflow: hidden; }
+  .toggle button {
+    font: inherit; font-size: 14px; padding: 7px 16px; border: none; background: #fff; cursor: pointer; color: #1f2328;
+  }
+  .toggle button + button { border-left: 1px solid #d0d4da; }
+  .toggle button.active { background: #1f2328; color: #fff; }
+  .stage-period { color: #6a6f76; font-size: 13px; margin-left: 12px; }
+  svg { display: block; max-width: 100%; height: auto; }
+  .node rect { stroke: #fff; stroke-width: 1px; }
+  .node text { font-size: 12.5px; fill: #1f2328; }
+  .node text .amt { font-weight: 600; }
+  .link { mix-blend-mode: multiply; }
+  .link:hover { opacity: 0.9 !important; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 12.5px; color: #44494f; }
+  .legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .footnote { color: #8a8f96; font-size: 12px; margin-top: 16px; max-width: 72ch; }
+</style>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <p class="terms" id="terms"></p>
+  <div>
+    <span class="toggle" id="toggle"></span>
+    <span class="stage-period" id="period"></span>
+  </div>
+  <div id="chart"></div>
+  <div class="legend" id="legend"></div>
+  <p class="footnote">All figures hypothetical. Pseudo-nodes (“Value Creation”,
+  “Invested Capital”) exist to keep flows conservative across the exit boundary — every internal
+  node's inflows equal its outflows. Hover any ribbon for the story behind it.</p>
+
+<script>
+const DATA = globalThis.FUND_DATA;
+
+const KINDS = {
+  capital:       { label: "Capital in",          color: "#4e79a7" },
+  mgmt_fee:      { label: "Management fees",     color: "#f28e2b" },
+  fund_expense:  { label: "Fund expenses",       color: "#9aa0a6" },
+  deal_expense:  { label: "Deal expenses",       color: "#bab0ac" },
+  investment:    { label: "Investments",         color: "#59a14f" },
+  carryover:     { label: "Cost basis (from ①)", color: "#c9cbcf" },
+  appreciation:  { label: "Value creation",      color: "#8cd17d" },
+  exit_proceeds: { label: "Exit proceeds",       color: "#2e7d32" },
+  distribution:  { label: "Distributions",       color: "#4e79a7" },
+  carry:         { label: "Carried interest",    color: "#b07aa1" },
+  compensation:  { label: "Salaries & benefits", color: "#76b7b2" },
+  opex:          { label: "Operating costs",     color: "#d4a373" },
+  profit:        { label: "MgmtCo profit",       color: "#e8c547" },
+};
+
+const NODE_COLORS = { entity: "#2f3b4c", aggregate: "#5b6d84", pseudo: "#7fae8e" };
+const fmt = (v) => {
+  if (v < 1) return `$${Math.round(v * 1000)}K`;
+  const s = v < 10 ? v.toFixed(2) : v.toFixed(1);
+  return `$${parseFloat(s)}M`;
+};
+
+const W = 1150, H = 620, M = { top: 14, right: 220, bottom: 30, left: 220 };
+
+document.getElementById("title").textContent = `${DATA.meta.name} — where the money goes`;
+document.getElementById("terms").textContent =
+  `${fmt(DATA.meta.fundSize)} fund · ${DATA.meta.terms.carry} · GP commit ${DATA.meta.terms.gpCommit} · ${DATA.meta.terms.life}`;
+
+const params = new URLSearchParams(location.search);
+let current = DATA.stages.some((s) => s.id === params.get("stage")) ? params.get("stage") : DATA.stages[0].id;
+
+const toggle = d3.select("#toggle");
+for (const s of DATA.stages) {
+  toggle.append("button").attr("data-stage", s.id).text(s.label).on("click", () => { current = s.id; render(); });
+}
+
+function render() {
+  const stage = DATA.stages.find((s) => s.id === current);
+  toggle.selectAll("button").classed("active", function () { return this.dataset.stage === current; });
+  document.getElementById("period").textContent = stage.period;
+
+  const flows = DATA.flows.filter((f) => f.stage === current);
+  const usedIds = new Set(flows.flatMap((f) => [f.source, f.target]));
+  const nodes = DATA.nodes.filter((n) => usedIds.has(n.id)).map((n) => ({ ...n }));
+  const links = flows.map((f) => ({ ...f, value: f.amount }));
+
+  const sankey = d3.sankey()
+    .nodeId((d) => d.id)
+    .nodeWidth(16)
+    .nodePadding(30)
+    .nodeAlign(d3.sankeyJustify)
+    .extent([[M.left, M.top], [W - M.right, H - M.bottom]]);
+
+  const graph = sankey({ nodes, links });
+
+  d3.select("#chart").selectAll("svg").remove();
+  const svg = d3.select("#chart").append("svg").attr("viewBox", [0, 0, W, H]).attr("width", W);
+
+  svg.append("g").selectAll("path")
+    .data(graph.links)
+    .join("path")
+    .attr("class", "link")
+    .attr("d", d3.sankeyLinkHorizontal())
+    .attr("fill", "none")
+    .attr("stroke", (d) => (KINDS[d.kind] || {}).color || "#ccc")
+    .attr("stroke-opacity", 0.5)
+    .attr("stroke-width", (d) => Math.max(1.5, d.width))
+    .append("title")
+    .text((d) => `${d.source.label} → ${d.target.label}\n${fmt(d.value)} — ${(KINDS[d.kind] || {}).label || d.kind}\n${d.notes || ""}`);
+
+  const node = svg.append("g").selectAll("g")
+    .data(graph.nodes)
+    .join("g")
+    .attr("class", "node");
+
+  node.append("rect")
+    .attr("x", (d) => d.x0).attr("y", (d) => d.y0)
+    .attr("width", (d) => d.x1 - d.x0).attr("height", (d) => Math.max(2, d.y1 - d.y0))
+    .attr("fill", (d) => NODE_COLORS[d.kind] || "#666")
+    .attr("rx", 2)
+    .append("title")
+    .text((d) => `${d.label}\n${d.desc || ""}`);
+
+  node.append("text")
+    .attr("x", (d) => (d.x0 < W / 2 ? d.x0 - 8 : d.x1 + 8))
+    .attr("y", (d) => (d.y0 + d.y1) / 2)
+    .attr("dy", "-0.2em")
+    .attr("text-anchor", (d) => (d.x0 < W / 2 ? "end" : "start"))
+    .each(function (d) {
+      const t = d3.select(this);
+      t.append("tspan").text(d.label);
+      t.append("tspan").attr("class", "amt")
+        .attr("x", d.x0 < W / 2 ? d.x0 - 8 : d.x1 + 8).attr("dy", "1.15em")
+        .text(fmt(Math.max(
+          d3.sum(d.sourceLinks, (l) => l.value),
+          d3.sum(d.targetLinks, (l) => l.value)
+        )));
+    });
+
+  const kindsUsed = [...new Set(flows.map((f) => f.kind))];
+  d3.select("#legend").html("").selectAll("span.item")
+    .data(kindsUsed)
+    .join("span").attr("class", "item")
+    .html((k) => `<span class="swatch" style="background:${(KINDS[k] || {}).color || "#ccc"}"></span>${(KINDS[k] || {}).label || k}`);
+}
+
+render();
+</script>
+</body>
+</html>
